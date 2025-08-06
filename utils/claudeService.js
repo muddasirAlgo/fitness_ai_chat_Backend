@@ -1,10 +1,8 @@
-const axios = require('axios');
-
 class ClaudeService {
   constructor() {
     this.apiKey = process.env.ANTHROPIC_API_KEY;
     this.baseURL = 'https://api.anthropic.com/v1/messages';
-    this.model = 'claude-3-5-sonnet-20241022';
+    this.model = process.env.MODEL;
     this.maxTokens = 1024;
   }
 
