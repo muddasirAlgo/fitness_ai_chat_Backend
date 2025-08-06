@@ -2,7 +2,7 @@ const axios = require('axios');
 
 class ClaudeService {
   constructor() {
-    this.apiKey = process.env.ANTHROPIC_API_KEY || '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';
+    this.apiKey = process.env.ANTHROPIC_API_KEY;
     this.baseURL = 'https://api.anthropic.com/v1/messages';
     this.model = 'claude-3-5-sonnet-20241022';
     this.maxTokens = 1024;
