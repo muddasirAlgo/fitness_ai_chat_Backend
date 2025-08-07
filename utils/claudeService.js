@@ -1,9 +1,16 @@
+const axios = require('axios');
+
 class ClaudeService {
   constructor() {
     this.apiKey = process.env.ANTHROPIC_API_KEY;
     this.baseURL = 'https://api.anthropic.com/v1/messages';
     this.model = process.env.MODEL;
     this.maxTokens = 1024;
+    
+    if (!this.apiKey) {
+      console.error('❌ ANTHROPIC_API_KEY environment variable is not set!');
+      console.error('Please set your API key in the .env file or environment variables.');
+    }
   }
 
   // System prompts for different types of interactions
@@ -164,6 +171,9 @@ class ClaudeService {
 
   async sendMessage(messages, isImageAnalysis = false, isPersonalized = false) {
     try {
+      console.log('🔑 Using API Key:', this.apiKey ? `${this.apiKey.substring(0, 10)}...` : 'NOT SET');
+      console.log('🤖 Using Model:', this.model);
+      
       let systemPrompt;
       if (isImageAnalysis) {
         systemPrompt = ClaudeService.IMAGE_SYSTEM_PROMPT;
@@ -196,11 +206,13 @@ class ClaudeService {
 
     } catch (error) {
       console.error('Claude API Error:', error.response?.data || error.message);
+      // console.error('Full error object:', error);
       
       return {
         success: false,
         error: error.response?.data?.error?.message || error.message,
-        statusCode: error.response?.status
+        statusCode: error.response?.status,
+        details: error.response?.data
       };
     }
   }

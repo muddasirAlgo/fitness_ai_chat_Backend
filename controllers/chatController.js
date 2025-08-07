@@ -16,6 +16,7 @@ async function getUserChats(req, res) {
 
     // Format the response with messages
     const formattedChats = chats.map(chat => ({
+      id: chat._id,
       sessionId: chat.sessionId,
       title: chat.title,
       lastMessageAt: chat.lastMessageAt,
@@ -77,6 +78,65 @@ async function getChatBySessionId(req, res) {
   }
 }
 
+// Get specific chat by chat ID with all messages
+async function getChatByIdWithMessages(req, res) {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+    
+    console.log('📋 Fetching chat messages for chatId:', chatId, 'userId:', userId);
+
+    // Validate if chatId is a valid MongoDB ObjectId
+    if (!chatId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        message: 'Invalid chat ID format'
+      });
+    }
+
+    const chat = await Chat.findOne({ 
+      _id: chatId, 
+      user: userId, 
+      isActive: true 
+    }).select('sessionId title messages totalMessages lastMessageAt createdAt');
+
+    if (!chat) {
+      return res.status(404).json({
+        message: 'Chat not found'
+      });
+    }
+
+    console.log(`✅ Found chat with ${chat.messages.length} messages`);
+
+    // Format the response with all messages
+    const formattedMessages = chat.messages.map(message => ({
+      role: message.role,
+      content: message.content,
+      timestamp: message.timestamp,
+      messageType: message.messageType,
+      imageUrl: message.imageUrl
+    }));
+
+    res.json({
+      message: 'Chat messages retrieved successfully',
+      chat: {
+        chatId: chat._id,
+        sessionId: chat.sessionId,
+        title: chat.title,
+        messages: formattedMessages,
+        totalMessages: chat.totalMessages,
+        lastMessageAt: chat.lastMessageAt,
+        createdAt: chat.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get chat by ID error:', error);
+    res.status(500).json({
+      message: 'Internal server error while fetching chat messages'
+    });
+  }
+}
+
 // Create new chat session
 async function createNewChat(req, res) {
   try {
@@ -106,12 +166,18 @@ async function createNewChat(req, res) {
 async function getPersonalizedFitnessResponse(req, res) {
   try {
     const userId = req.user.id;
-    const { prompt } = req.body;
+    const { prompt, sessionId } = req.body;
     const imageFile = req.file; // For file upload support
 
     if (!prompt || prompt.trim() === '') {
       return res.status(400).json({
         message: 'Prompt is required'
+      });
+    }
+
+    if (!sessionId || sessionId.trim() === '') {
+      return res.status(400).json({
+        message: 'Session ID is required'
       });
     }
 
@@ -169,12 +235,13 @@ async function getPersonalizedFitnessResponse(req, res) {
     }
 
     if (claudeResponse.success) {
-      // Create or update chat session
-      let chat = await Chat.getChatSessionId(`personalized_${userId}`, userId);
+      // Get or create chat session with provided sessionId
+      let chat = await Chat.getChatSessionId(sessionId, userId);
       
       if (!chat) {
+        // Create new chat session with the provided sessionId
         chat = await Chat.createChatSession(userId, 'Personalized Fitness Consultation');
-        chat.sessionId = `personalized_${userId}`;
+        chat.sessionId = sessionId;
         await chat.save();
       }
 
@@ -205,6 +272,7 @@ async function getPersonalizedFitnessResponse(req, res) {
           } : null
         },
         chatSessionId: chat.sessionId,
+        sessionId: sessionId,
         usage: claudeResponse.usage,
         hasImage: !!imageFile
       });
@@ -329,6 +397,7 @@ async function getChatStats(req, res) {
 module.exports = {
   getUserChats,
   getChatBySessionId,
+  getChatByIdWithMessages,
   createNewChat,
   getPersonalizedFitnessResponse,
   deleteChat,

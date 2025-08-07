@@ -5,6 +5,7 @@ const path = require('path');
 const {
   getUserChats,
   getChatBySessionId,
+  getChatByIdWithMessages,
   createNewChat,
   getPersonalizedFitnessResponse,
   deleteChat,
@@ -66,6 +67,7 @@ router.use((error, req, res, next) => {
 // Chat management routes
 router.get('/allChats', getUserChats);
 router.get('/chats/:sessionId', getChatBySessionId);
+router.get('/id/:chatId', getChatByIdWithMessages);
 router.post('/new-chat', createNewChat);
 router.post('/personalized-response', upload.single('image'), getPersonalizedFitnessResponse);
 router.delete('/chats/:sessionId', deleteChat);
