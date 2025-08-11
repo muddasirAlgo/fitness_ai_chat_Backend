@@ -14,17 +14,7 @@ const {
 } = require('../controllers/chatController');
 const protect = require('../middleware/authMiddleware');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Configure multer for memory storage (temporary)
 const fileFilter = (req, file, cb) => {
   // Accept only image files
   if (file.mimetype.startsWith('image/')) {
@@ -35,7 +25,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({ 
-  storage: storage,
+  storage: multer.memoryStorage(), // Store in memory temporarily
   fileFilter: fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit

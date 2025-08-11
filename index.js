@@ -8,6 +8,11 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes.js');
 const healthRoutes = require('./routes/healthRoutes.js');
 const chatRoutes = require('./routes/chatRoutes.js');
+const mealRoutes = require('./routes/mealRoutes.js');
+const workoutRoutes = require('./routes/workoutRoutes.js');
+const waterSleepRoutes = require('./routes/waterSleepRoutes.js');
+const activityRoutes = require('./routes/activityRoutes.js');
+const mindfulnessRoutes = require('./routes/mindfulnessRoutes.js');
 const ChatSocket = require('./socket/chatSocket.js');
 const cors = require('cors');
 
@@ -36,6 +41,11 @@ app.use('/uploads', express.static('uploads')); // Serve uploaded files
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/meals', mealRoutes);
+app.use('/api/v1/workouts', workoutRoutes);
+app.use('/api/v1/water-sleep', waterSleepRoutes);
+app.use('/api/v1/activities', activityRoutes);
+app.use('/api/v1/mindfulness', mindfulnessRoutes);
 app.use(errorHandler); // Custom error middleware
 
 app.get('/', (req, res) => {

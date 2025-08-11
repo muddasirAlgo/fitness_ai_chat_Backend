@@ -2,6 +2,7 @@ const Chat = require('../models/Chat.js');
 const Profile = require('../models/Profile.js');
 const HealthMetrics = require('../models/HealthMetrics.js');
 const claudeService = require('../utils/claudeService.js');
+const imageKitService = require('../utils/imageKitService.js');
 
 // Get user's chat history
 async function getUserChats(req, res) {
@@ -224,11 +225,37 @@ async function getPersonalizedFitnessResponse(req, res) {
     embeddedPrompt += `\n\nMy question/request: ${prompt.trim()}`;
 
     let claudeResponse;
+    let uploadedImageUrl = null;
+    let uploadedImageId = null;
 
     // Handle image analysis if file is uploaded
     if (imageFile) {
-      // For image analysis, use only the user's prompt without profile data
-      claudeResponse = await claudeService.analyzeImageWithContext(imageFile.path, prompt.trim());
+      try {
+        // Upload image to ImageKit using buffer
+        const uploadResult = await imageKitService.uploadImage(
+          imageFile.buffer, 
+          imageFile.originalname,
+          'fitness-ai-chat'
+        );
+
+        if (uploadResult.success) {
+          uploadedImageUrl = uploadResult.url;
+          uploadedImageId = uploadResult.fileId;
+          
+          // For image analysis, use the uploaded image URL
+          claudeResponse = await claudeService.analyzeImage(uploadedImageUrl, prompt.trim());
+        } else {
+          return res.status(500).json({
+            message: 'Failed to upload image',
+            error: uploadResult.error
+          });
+        }
+      } catch (error) {
+        console.error('Image upload error:', error);
+        return res.status(500).json({
+          message: 'Error processing image upload'
+        });
+      }
     } else {
       // For text-only queries, use regular chat system prompt with embedded profile data
       claudeResponse = await claudeService.sendTextMessage([], embeddedPrompt);
@@ -246,7 +273,7 @@ async function getPersonalizedFitnessResponse(req, res) {
       }
 
       // Add messages to chat
-      await chat.addMessage('user', prompt.trim(), imageFile ? 'image' : 'text', imageFile ? imageFile.path : null);
+      await chat.addMessage('user', prompt.trim(), imageFile ? 'image' : 'text', uploadedImageUrl);
       await chat.addMessage('assistant', claudeResponse.content);
 
       res.json({
@@ -274,7 +301,12 @@ async function getPersonalizedFitnessResponse(req, res) {
         chatSessionId: chat.sessionId,
         sessionId: sessionId,
         usage: claudeResponse.usage,
-        hasImage: !!imageFile
+        hasImage: !!imageFile,
+        imageInfo: imageFile ? {
+          url: uploadedImageUrl,
+          fileId: uploadedImageId,
+          fileName: imageFile.originalname
+        } : null
       });
 
     } else {

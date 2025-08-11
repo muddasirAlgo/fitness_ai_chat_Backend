@@ -1,5 +1,6 @@
 const User = require('../models/User.js');
 const Profile = require('../models/Profile.js');
+const HealthMetrics = require('../models/HealthMetrics.js');
 const OTP = require('../models/OTP.js');
 const generateToken = require('../utils/generateToken.js');
 const { sendOTPEmail, sendMockEmail, generateOTP } = require('../utils/emailService.js');
@@ -1168,11 +1169,15 @@ async function getUserProfile(req, res) {
     }
 
     // Get user profile
-    const profile = await Profile.findOne({ user: req.user.id }).select('-createdAt -updatedAt');
+    const profile = await Profile.findOne({ user: req.user.id }).select('-createdAt -updatedAt -_id -__v -user');
+
+    // Get user health metrics
+    const healthMetrics = await HealthMetrics.findOne({ user: req.user.id }).select('-createdAt -updatedAt -lastUpdated -_id -__v -user');
 
     res.json({
-      user: user,
-      profile: profile
+      user: user.id,
+      profile: profile,
+      healthMetrics: healthMetrics
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -1184,17 +1189,22 @@ async function getUserProfile(req, res) {
 
 // Update user profile
 async function updateUserProfile(req, res) {
-  const { name, username, email, phoneNumber, location, address, purposeOfJoining } = req.body;
+  const { 
+    name, username, email, phoneNumber, location, address, purposeOfJoining,
+    height, weight, dailyIntakeProteins, dailyIntakeCalories, fat, dob
+  } = req.body;
 
   try {
     // Check if at least one field is provided
-    if (!name && !username && !email && !phoneNumber && !location && !address && !purposeOfJoining) {
+    if (!name && !username && !email && !phoneNumber && !location && !address && !purposeOfJoining &&
+        !height && !weight && !dailyIntakeProteins && !dailyIntakeCalories && !fat && !dob) {
       return res.status(400).json({
         message: 'At least one field is required for update'
       });
     }
 
     const profileUpdateData = {};
+    const healthMetricsUpdateData = {};
 
     // Validate and prepare profile update data
     if (name !== undefined && name !== null) {
@@ -1350,6 +1360,68 @@ async function updateUserProfile(req, res) {
       profileUpdateData.purposeOfJoining = purposeOfJoining.trim();
     }
 
+    // Validate and prepare health metrics update data
+    if (height !== undefined && height !== null) {
+      if (isNaN(height) || height <= 0) {
+        return res.status(400).json({
+          message: 'Height must be a positive number'
+        });
+      }
+      healthMetricsUpdateData.height = Number(height);
+    }
+
+    if (weight !== undefined && weight !== null) {
+      if (isNaN(weight) || weight <= 0) {
+        return res.status(400).json({
+          message: 'Weight must be a positive number'
+        });
+      }
+      healthMetricsUpdateData.weight = Number(weight);
+    }
+
+    if (dailyIntakeProteins !== undefined && dailyIntakeProteins !== null) {
+      if (isNaN(dailyIntakeProteins) || dailyIntakeProteins < 0) {
+        return res.status(400).json({
+          message: 'Daily protein intake must be a non-negative number'
+        });
+      }
+      healthMetricsUpdateData.dailyIntakeProteins = Number(dailyIntakeProteins);
+    }
+
+    if (dailyIntakeCalories !== undefined && dailyIntakeCalories !== null) {
+      if (isNaN(dailyIntakeCalories) || dailyIntakeCalories < 0) {
+        return res.status(400).json({
+          message: 'Daily calorie intake must be a non-negative number'
+        });
+      }
+      healthMetricsUpdateData.dailyIntakeCalories = Number(dailyIntakeCalories);
+    }
+
+    if (fat !== undefined && fat !== null) {
+      if (isNaN(fat) || fat < 0) {
+        return res.status(400).json({
+          message: 'Fat intake must be a non-negative number'
+        });
+      }
+      healthMetricsUpdateData.fat = Number(fat);
+    }
+
+    if (dob !== undefined && dob !== null) {
+      if (!dob || dob.trim() === '') {
+        return res.status(400).json({
+          message: 'Date of birth cannot be empty'
+        });
+      }
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dob)) {
+        return res.status(400).json({
+          message: 'Date of birth must be in YYYY-MM-DD format'
+        });
+      }
+      healthMetricsUpdateData.dob = dob.trim();
+    }
+
     // Update profile only
     const updatedProfile = await Profile.findOneAndUpdate(
       { user: req.user.id },
@@ -1389,16 +1461,52 @@ async function updateUserProfile(req, res) {
       }
     }
 
+    // Update health metrics if provided
+    let updatedHealthMetrics = null;
+    if (Object.keys(healthMetricsUpdateData).length > 0) {
+      // Calculate BMI if both height and weight are provided
+      if (healthMetricsUpdateData.height && healthMetricsUpdateData.weight) {
+        const heightInMeters = healthMetricsUpdateData.height / 100;
+        healthMetricsUpdateData.bmi = Number((healthMetricsUpdateData.weight / (heightInMeters * heightInMeters)).toFixed(1));
+      }
+
+      // Calculate age from DOB if provided
+      if (healthMetricsUpdateData.dob) {
+        const birthDate = new Date(healthMetricsUpdateData.dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        healthMetricsUpdateData.age = age;
+      }
+
+      updatedHealthMetrics = await HealthMetrics.findOneAndUpdate(
+        { user: req.user.id },
+        healthMetricsUpdateData,
+        {
+          new: true, // Return updated document
+          runValidators: true, // Run mongoose validators
+          upsert: true // Create if doesn't exist
+        }
+      );
+    }
+
     // Get the list of updated fields for the response
     const updatedFields = Object.keys(profileUpdateData);
-    const updateMessage = updatedFields.length === 1
-      ? `${updatedFields[0]} updated successfully`
-      : `${updatedFields.join(', ')} updated successfully`;
+    const updatedHealthFields = Object.keys(healthMetricsUpdateData);
+    const allUpdatedFields = [...updatedFields, ...updatedHealthFields];
+    
+    const updateMessage = allUpdatedFields.length === 1
+      ? `${allUpdatedFields[0]} updated successfully`
+      : `${allUpdatedFields.join(', ')} updated successfully`;
 
     res.json({
       message: updateMessage,
-      updatedFields: updatedFields,
-      profile: updatedProfile
+      updatedFields: allUpdatedFields,
+      profile: updatedProfile,
+      healthMetrics: updatedHealthMetrics
     });
 
   } catch (error) {
