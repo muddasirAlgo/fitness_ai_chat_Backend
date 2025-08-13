@@ -3,6 +3,7 @@ const User = require('../models/User.js');
 const Chat = require('../models/Chat.js');
 const Profile = require('../models/Profile.js');
 const claudeService = require('../utils/claudeService.js');
+const { cleanAIResponse } = require('../helpers/clean_response.js').default;
 
 class ChatSocket {
   constructor(io) {
@@ -166,7 +167,9 @@ class ChatSocket {
           // Generate title from first message
           const title = await claudeService.generateChatTitle(message);
           console.log('📝 Generated title:', title);
-          chat.title = title;
+          // Clean the title to remove any formatting
+          const cleanedTitle = cleanAIResponse(title);
+          chat.title = cleanedTitle;
           await chat.save();
           console.log('💾 Chat saved with title:', chat.title);
 
@@ -273,8 +276,12 @@ class ChatSocket {
           console.log('✅ Claude response successful, length:', claudeResponse.content.length);
           console.log('✅ Claude response content:', claudeResponse.content);
           
+          // Clean the AI response before saving and sending
+          const cleanedResponse = cleanAIResponse(claudeResponse.content);
+          console.log('🧹 Cleaned response length:', cleanedResponse.length);
+          
           // Add assistant response to chat
-          const assistantMessageResult = await chat.addMessage('assistant', claudeResponse.content);
+          const assistantMessageResult = await chat.addMessage('assistant', cleanedResponse);
           console.log('🤖 Assistant message added result:', assistantMessageResult);
 
           // Emit assistant response
@@ -282,7 +289,7 @@ class ChatSocket {
             sessionId: chat.sessionId,
             message: {
               role: 'assistant',
-              content: claudeResponse.content,
+              content: cleanedResponse,
               messageType: 'text',
               timestamp: new Date()
             }
@@ -295,14 +302,16 @@ class ChatSocket {
             console.log('📝 Updating chat title for first message');
             const newTitle = await claudeService.generateChatTitle(message);
             if (newTitle && newTitle !== 'New Chat') {
-              chat.title = newTitle;
+              // Clean the title to remove any formatting
+              const cleanedTitle = cleanAIResponse(newTitle);
+              chat.title = cleanedTitle;
               await chat.save();
               
               this.io.to(`chat_${chat.sessionId}`).emit('chat_title_updated', {
                 sessionId: chat.sessionId,
-                title: newTitle
+                title: cleanedTitle
               });
-              console.log('✅ Chat title updated:', newTitle);
+              console.log('✅ Chat title updated:', cleanedTitle);
             }
           }
 

@@ -34,15 +34,17 @@ async function addWorkout(req, res) {
       });
     }
 
-    if (calories < 0) {
+    // Validate calories is a valid number and non-negative
+    if (isNaN(Number(calories)) || Number(calories) < 0) {
       return res.status(400).json({
-        message: 'Calories must be non-negative'
+        message: 'Calories must be a valid non-negative number'
       });
     }
 
-    if (duration <= 0) {
+    // Validate duration is a valid number and positive
+    if (isNaN(Number(duration)) || Number(duration) <= 0) {
       return res.status(400).json({
-        message: 'Duration must be positive'
+        message: 'Duration must be a valid positive number'
       });
     }
 
@@ -56,16 +58,19 @@ async function addWorkout(req, res) {
           });
         }
 
-        if (exercise.sets < 1 || exercise.reps < 1) {
+        if (isNaN(Number(exercise.sets)) || Number(exercise.sets) < 1 || 
+            isNaN(Number(exercise.reps)) || Number(exercise.reps) < 1) {
           return res.status(400).json({
-            message: `Exercise ${i + 1} has invalid sets or reps`
+            message: `Exercise ${i + 1} has invalid sets or reps - must be valid positive numbers`
           });
         }
 
-        if (exercise.weight && exercise.weight < 0) {
-          return res.status(400).json({
-            message: `Exercise ${i + 1} has negative weight`
-          });
+        if (exercise.weight !== undefined && exercise.weight !== null) {
+          if (isNaN(Number(exercise.weight)) || Number(exercise.weight) < 0) {
+            return res.status(400).json({
+              message: `Exercise ${i + 1} has invalid weight - must be a valid non-negative number`
+            });
+          }
         }
       }
     }
@@ -90,7 +95,7 @@ async function addWorkout(req, res) {
 
     if (existingWorkout) {
       return res.status(400).json({
-        message: `A ${workoutType} workout already exists for this date. Use update instead.`
+        message: `A ${workoutType} workout already exists for this date.`
       });
     }
 
@@ -164,18 +169,18 @@ async function updateWorkout(req, res) {
     }
 
     if (calories !== undefined) {
-      if (calories < 0) {
+      if (isNaN(Number(calories)) || Number(calories) < 0) {
         return res.status(400).json({
-          message: 'Calories must be non-negative'
+          message: 'Calories must be a valid non-negative number'
         });
       }
       updateData.calories = Number(calories);
     }
 
     if (duration !== undefined) {
-      if (duration <= 0) {
+      if (isNaN(Number(duration)) || Number(duration) <= 0) {
         return res.status(400).json({
-          message: 'Duration must be positive'
+          message: 'Duration must be a valid positive number'
         });
       }
       updateData.duration = Number(duration);
@@ -197,8 +202,25 @@ async function updateWorkout(req, res) {
           const exercise = exercises[i];
           if (!exercise.exerciseName || !exercise.sets || !exercise.reps) {
             return res.status(400).json({
-              message: `Exercise ${i + 1} is missing required fields`
+              message: `Exercise ${i + 1} is missing required fields: exerciseName, sets, reps`
             });
+          }
+          
+          // Validate sets and reps are valid numbers
+          if (isNaN(Number(exercise.sets)) || Number(exercise.sets) < 1 || 
+              isNaN(Number(exercise.reps)) || Number(exercise.reps) < 1) {
+            return res.status(400).json({
+              message: `Exercise ${i + 1} has invalid sets or reps - must be valid positive numbers`
+            });
+          }
+          
+          // Validate weight if provided
+          if (exercise.weight !== undefined && exercise.weight !== null) {
+            if (isNaN(Number(exercise.weight)) || Number(exercise.weight) < 0) {
+              return res.status(400).json({
+                message: `Exercise ${i + 1} has invalid weight - must be a valid non-negative number`
+              });
+            }
           }
         }
         updateData.exercises = exercises;

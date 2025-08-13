@@ -36,15 +36,17 @@ async function addActivity(req, res) {
       });
     }
 
-    if (duration < 1 || duration > 1440) {
+    // Validate duration is a valid number and within range
+    if (isNaN(Number(duration)) || Number(duration) < 1 || Number(duration) > 1440) {
       return res.status(400).json({
-        message: 'Duration must be between 1 and 1440 minutes (24 hours)'
+        message: 'Duration must be a valid number between 1 and 1440 minutes (24 hours)'
       });
     }
 
-    if (calories < 0) {
+    // Validate calories is a valid number and non-negative
+    if (isNaN(Number(calories)) || Number(calories) < 0) {
       return res.status(400).json({
-        message: 'Calories must be non-negative'
+        message: 'Calories must be a valid non-negative number'
       });
     }
 
@@ -82,6 +84,14 @@ async function addActivity(req, res) {
     if (isNaN(activityStartTime.getTime())) {
       return res.status(400).json({
         message: 'Invalid start time format'
+      });
+    }
+
+    // Check if activity data already exists for this date
+    const existingActivity = await Activity.getDailyActivities(userId, activityDate);
+    if (existingActivity && existingActivity.length > 0) {
+      return res.status(400).json({
+        message: 'Activity data already exists for this date.'
       });
     }
 
@@ -169,18 +179,18 @@ async function updateActivity(req, res) {
     }
 
     if (duration !== undefined) {
-      if (duration < 1 || duration > 1440) {
+      if (isNaN(Number(duration)) || Number(duration) < 1 || Number(duration) > 1440) {
         return res.status(400).json({
-          message: 'Duration must be between 1 and 1440 minutes'
+          message: 'Duration must be a valid number between 1 and 1440 minutes'
         });
       }
       updateData.duration = Number(duration);
     }
 
     if (calories !== undefined) {
-      if (calories < 0) {
+      if (isNaN(Number(calories)) || Number(calories) < 0) {
         return res.status(400).json({
-          message: 'Calories must be non-negative'
+          message: 'Calories must be a valid non-negative number'
         });
       }
       updateData.calories = Number(calories);
@@ -200,6 +210,11 @@ async function updateActivity(req, res) {
     }
 
     if (distance !== undefined) {
+      if (isNaN(Number(distance)) || Number(distance) < 0) {
+        return res.status(400).json({
+          message: 'Distance must be a valid non-negative number'
+        });
+      }
       updateData.distance = Number(distance);
     }
 

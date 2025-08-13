@@ -3,6 +3,7 @@ const Profile = require('../models/Profile.js');
 const HealthMetrics = require('../models/HealthMetrics.js');
 const claudeService = require('../utils/claudeService.js');
 const imageKitService = require('../utils/imageKitService.js');
+const { cleanAIResponse } = require('../helpers/clean_response.js').default;
 
 // Get user's chat history
 async function getUserChats(req, res) {
@@ -272,13 +273,16 @@ async function getPersonalizedFitnessResponse(req, res) {
         await chat.save();
       }
 
+      // Clean the AI response before saving and sending
+      const cleanedResponse = cleanAIResponse(claudeResponse.content);
+
       // Add messages to chat
       await chat.addMessage('user', prompt.trim(), imageFile ? 'image' : 'text', uploadedImageUrl);
-      await chat.addMessage('assistant', claudeResponse.content);
+      await chat.addMessage('assistant', cleanedResponse);
 
       res.json({
         message: 'Personalized fitness response generated successfully',
-        response: claudeResponse.content,
+        response: cleanedResponse,
         userContext: {
           profile: {
             name: profile.name,

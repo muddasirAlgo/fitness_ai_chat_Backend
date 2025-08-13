@@ -5,7 +5,7 @@ const {
   createProfile,
   loginUser,
   logoutUser,
-  logoutAllDevices,
+  // logoutAllDevices,
   getSessionStatus,
   forgotPassword,
   verifyOTP,

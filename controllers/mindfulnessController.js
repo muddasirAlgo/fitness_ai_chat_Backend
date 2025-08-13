@@ -29,9 +29,10 @@ async function addMindfulnessActivity(req, res) {
       });
     }
 
-    if (duration < 1 || duration > 480) {
+    // Validate duration is a valid number and within range
+    if (isNaN(Number(duration)) || Number(duration) < 1 || Number(duration) > 480) {
       return res.status(400).json({
-        message: 'Duration must be between 1 and 480 minutes (8 hours)'
+        message: 'Duration must be a valid number between 1 and 480 minutes (8 hours)'
       });
     }
 
@@ -67,6 +68,14 @@ async function addMindfulnessActivity(req, res) {
     if (isNaN(activityStartTime.getTime())) {
       return res.status(400).json({
         message: 'Invalid start time format'
+      });
+    }
+
+    // Check if mindfulness activity data already exists for this date
+    const existingActivity = await Mindfulness.getDailyActivities(userId, activityDate);
+    if (existingActivity && existingActivity.length > 0) {
+      return res.status(400).json({
+        message: 'Mindfulness activity data already exists for this date.'
       });
     }
 
@@ -142,9 +151,9 @@ async function updateMindfulnessActivity(req, res) {
     }
 
     if (duration !== undefined) {
-      if (duration < 1 || duration > 480) {
+      if (isNaN(Number(duration)) || Number(duration) < 1 || Number(duration) > 480) {
         return res.status(400).json({
-          message: 'Duration must be between 1 and 480 minutes'
+          message: 'Duration must be a valid number between 1 and 480 minutes'
         });
       }
       updateData.duration = Number(duration);

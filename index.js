@@ -13,6 +13,7 @@ const workoutRoutes = require('./routes/workoutRoutes.js');
 const waterSleepRoutes = require('./routes/waterSleepRoutes.js');
 const activityRoutes = require('./routes/activityRoutes.js');
 const mindfulnessRoutes = require('./routes/mindfulnessRoutes.js');
+const dailyMetricsRoutes = require('./routes/dailyMetricsRoutes.js');
 const ChatSocket = require('./socket/chatSocket.js');
 const cors = require('cors');
 
@@ -46,6 +47,7 @@ app.use('/api/v1/workouts', workoutRoutes);
 app.use('/api/v1/water-sleep', waterSleepRoutes);
 app.use('/api/v1/activities', activityRoutes);
 app.use('/api/v1/mindfulness', mindfulnessRoutes);
+app.use('/api/v1/daily-metrics', dailyMetricsRoutes);
 app.use(errorHandler); // Custom error middleware
 
 app.get('/', (req, res) => {

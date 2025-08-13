@@ -27,6 +27,14 @@ async function addWaterEntry(req, res) {
       });
     }
 
+    // Check if data already exists for this date
+    const existingRecord = await WaterSleep.getDailyData(userId, waterDate);
+    if (existingRecord && existingRecord.waterEntries && existingRecord.waterEntries.length > 0) {
+      return res.status(400).json({
+        message: 'Water data already exists for this date.'
+      });
+    }
+
     // Get or create daily record
     let dailyRecord = await WaterSleep.getDailyData(userId, waterDate);
 
@@ -92,9 +100,10 @@ async function addSleepData(req, res) {
       });
     }
 
-    if (sleepHours < 0.5 || sleepHours > 24) {
+    // Validate sleep hours is a valid number and within range
+    if (isNaN(Number(sleepHours)) || Number(sleepHours) < 0.5 || Number(sleepHours) > 24) {
       return res.status(400).json({
-        message: 'Sleep hours must be between 0.5 and 24'
+        message: 'Sleep hours must be a valid number between 0.5 and 24'
       });
     }
 
@@ -106,6 +115,14 @@ async function addSleepData(req, res) {
     if (isNaN(sleepDate.getTime()) || isNaN(bedTimeDate.getTime()) || isNaN(wakeupTimeDate.getTime())) {
       return res.status(400).json({
         message: 'Invalid date format'
+      });
+    }
+
+    // Check if sleep data already exists for this date
+    const existingRecord = await WaterSleep.getDailyData(userId, sleepDate);
+    if (existingRecord && existingRecord.sleep) {
+      return res.status(400).json({
+        message: 'Sleep data already exists for this date.'
       });
     }
 

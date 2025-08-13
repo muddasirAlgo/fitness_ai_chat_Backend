@@ -57,7 +57,7 @@ async function addMeal(req, res) {
 
     if (existingMeal) {
       return res.status(400).json({
-        message: `A ${mealType} meal already exists for this date. Use update instead.`
+        message: `A ${mealType} meal already exists for this date.`
       });
     }
 
